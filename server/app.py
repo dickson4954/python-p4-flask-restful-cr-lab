@@ -17,10 +17,43 @@ db.init_app(app)
 api = Api(app)
 
 class Plants(Resource):
-    pass
+    def get(self):
+        response_dict_list = [n.to_dict() for n in Plant.query.all()]
+        return make_response(jsonify(response_dict_list), 200)
+
+    def post(self):
+        data = request.get_json()
+        if not data:
+            return make_response(jsonify({'error': 'No input data provided'}), 400)
+
+        try:
+            new_record = Plant(
+                name=data['name'],
+                image=data['image'],
+                price=data['price'],
+            )
+            db.session.add(new_record)
+            db.session.commit()
+            response_dict = new_record.to_dict()
+            return make_response(jsonify(response_dict), 201)
+        except KeyError as e:
+            return make_response(jsonify({'error': f'Missing field: {e}'}), 400)
+        except Exception as e:
+            db.session.rollback()
+            return make_response(jsonify({'error': str(e)}), 500)
+
+api.add_resource(Plants, '/plants')
 
 class PlantByID(Resource):
-    pass
+    def get(self, id):
+        plant = Plant.query.filter_by(id=id).first()
+        if plant is None:
+            return make_response(jsonify({'error': 'Plant not found'}), 404)
+
+        response_dict = plant.to_dict()
+        return make_response(jsonify(response_dict), 200)
+
+api.add_resource(PlantByID, '/plants/<int:id>')
         
 
 if __name__ == '__main__':
